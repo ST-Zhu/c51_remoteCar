@@ -1,0 +1,309 @@
+C51 COMPILER V9.56.0.0   ____                                                              06/20/2018 20:09:35 PAGE 1   
+
+
+C51 COMPILER V9.56.0.0, COMPILATION OF MODULE ____
+OBJECT MODULE PLACED IN 接收.OBJ
+COMPILER INVOKED BY: D:\Program Files\Keil_v5\C51\BIN\C51.EXE 接收.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND TABS(2)
+
+line level    source
+
+   1          #include "nRF24L01.h" 
+   2          #include "DataScope_DP.h"
+   3          #define CYCLE 255 //PWM周期
+   4          #define C 0.19  //轮子周长
+   5          #define T 0.1  //周期
+   6            
+   7          uchar TX_ADDRESS[TX_ADR_WIDTH]={0xB1,0x51,0xF3,0x08,0x70}; //发送地址   //更改收发地址
+   8          uchar RX_ADDRESS[RX_ADR_WIDTH]={0xB2,0x52,0xF4,0x09,0x71}; //接收地址
+   9          uchar rate = 0x0F;    //2Mbs, 0dB  低噪声增益开启
+  10          
+  11          sbit LED=P2^6;                  //信号灯接口
+  12          uchar UD,LR,QS;                 //小车状态判断数
+  13          uchar rece_buf[3];              //接收寄存器
+  14          uchar tece_buf[2];              //发送寄存器
+  15          
+  16          sbit ENA=P1^0;
+  17          sbit IN1=P1^1;
+  18          sbit IN2=P1^2;
+  19          sbit IN3=P1^3;
+  20          sbit IN4=P1^4;
+  21          sbit ENB=P1^5;
+  22          uchar count_R,count_L;    //计数数
+  23          uchar PWM_R,PWM_L;        //所占空间比
+  24          
+  25          uchar temp_R,temp_L;        //被挡次数
+  26          uchar time1,time2;        //加长串口发送数据时间
+  27          uchar flag;               //计位数
+  28          
+  29          void delay(uint t)
+  30          {
+  31   1        uint a,b;
+  32   1        for(a=0;a<t;a++)
+  33   1          for (b=0;b<255;b++);
+  34   1      }
+  35          
+  36          void InitCar()
+  37          {
+  38   1        ENA=0;
+  39   1        IN1=0;
+  40   1        IN2=0;
+  41   1        IN3=0;
+  42   1        IN4=0;
+  43   1        ENB=0;
+  44   1      }
+  45          
+  46          void InitNRF24L01()
+  47          {
+  48   1        uint i;
+  49   1        LED=0;
+  50   1        while(NRF24L01_Check());          //等待检测到NRF24L01，程序才会向下执行
+  51   1        NRF24L01_RT_Init(TX_PLOAD_WIDTH,TX_ADDRESS,TX_ADR_WIDTH,RX_ADDRESS,RX_ADR_WIDTH,rate);      
+  52   1        for(i=0;i<6;i++)
+  53   1          {
+  54   2            delay(100);
+  55   2            LED=~LED;
+C51 COMPILER V9.56.0.0   ____                                                              06/20/2018 20:09:35 PAGE 2   
+
+  56   2          }                               //自检成功
+  57   1        LED=0;
+  58   1      }
+  59          
+  60          void InitTimer0()
+  61          {
+  62   1        IP=0x02;    //设置定时器0优先级最高
+  63   1        TMOD|=0x01;
+  64   1        TH0=(65536-10)/256;
+  65   1        TL0=(65536-10)%256;
+  66   1        EA=1;
+  67   1        ET0=1;
+  68   1        TR0=1;
+  69   1      }
+  70          
+  71          void InitUart()
+  72          {
+  73   1        TMOD|=0x20;
+  74   1        TH1=0xfd;
+  75   1        TL1=0xfd; //波特率9600
+  76   1        TR1=1;
+  77   1        SM0=0;
+  78   1        SM1=1;
+  79   1      }
+  80          
+  81          void InitExter()
+  82          {
+  83   1        EX0=1;
+  84   1        IT0=1;
+  85   1        EX1=1;
+  86   1        IT1=1;
+  87   1      }
+  88          
+  89          void Init()
+  90          {
+  91   1        InitCar();            //初始化PWM小车
+  92   1        InitNRF24L01();       //初始化NRF24L01
+  93   1        InitTimer0();         //开定时器0
+  94   1        InitUart();           //初始化串口
+  95   1      //  InitExter();          //初始化外部中断
+  96   1      }
+  97          
+  98          void RX()
+  99          {
+ 100   1        UD=rece_buf[0];
+ 101   1        LR=rece_buf[1];
+ 102   1        QS=rece_buf[2];
+ 103   1        LED=1;                  //接受成功
+ 104   1      }
+ 105          
+ 106          void TO_speed()
+ 107          {
+ 108   1        PWM_R=QS;
+ 109   1        PWM_L=QS;
+ 110   1      }
+ 111          
+ 112          void up()
+ 113          {
+ 114   1        IN1=0;
+ 115   1        IN2=1;
+ 116   1        IN3=1;
+ 117   1        IN4=0;
+C51 COMPILER V9.56.0.0   ____                                                              06/20/2018 20:09:35 PAGE 3   
+
+ 118   1      }
+ 119          
+ 120          void down()
+ 121          {
+ 122   1        IN1=1;
+ 123   1        IN2=0;
+ 124   1        IN3=0;
+ 125   1        IN4=1;
+ 126   1      }
+ 127          
+ 128          void left()
+ 129          {
+ 130   1        PWM_L/=5;
+ 131   1      }
+ 132          
+ 133          void right()
+ 134          {
+ 135   1        PWM_R/=5;
+ 136   1      }
+ 137          
+ 138          void START()
+ 139          {
+ 140   1        InitCar();                  //初始化小车
+ 141   1        TO_speed();                   //规定速度
+ 142   1        if(UD>150)  up();           //前进
+ 143   1        if(UD<100)  down();         //后退
+ 144   1        if(LR>150)  left();         //左转
+ 145   1        if(LR<100)  right();        //右转
+ 146   1      
+ 147   1      }
+ 148          
+ 149          void STOP()
+ 150          {
+ 151   1        LED=0;
+ 152   1        ENA=0;
+ 153   1        IN1=0;
+ 154   1        IN2=0;
+ 155   1        IN3=0;
+ 156   1        IN4=0;
+ 157   1        ENB=0;
+ 158   1      }
+ 159          
+ 160          uchar NOW_speed_L()//计算速度
+ 161          {
+ 162   1        float V_L,n_L;
+ 163   1        n_L=temp_L/20.0;  //转速
+ 164   1        V_L=n_L*C/T;  //小车右轮速度
+ 165   1        temp_L=0; //计数数清零
+ 166   1        return V_L;
+ 167   1      }
+ 168          
+ 169          uchar NOW_speed_R()//计算速度
+ 170          {
+ 171   1        float V_R,n_R;
+ 172   1        n_R=temp_R/20.0;  //转速
+ 173   1        V_R=n_R*C/T;  //小车右轮速度
+ 174   1        temp_R=0; //计数数清零
+ 175   1        return V_R;
+ 176   1      }
+ 177          
+ 178          void send(float speed_L,float speed_R)  //多功能串口显示波形
+ 179          {
+C51 COMPILER V9.56.0.0   ____                                                              06/20/2018 20:09:35 PAGE 4   
+
+ 180   1        uchar i;
+ 181   1        uchar Send_Count;
+ 182   1        DataScope_Get_Channel_Data(speed_L,1);
+ 183   1        DataScope_Get_Channel_Data(speed_R,2);
+ 184   1        Send_Count=DataScope_Data_Generate(2);
+ 185   1        for(i=0;i<Send_Count;i++)
+ 186   1        {
+ 187   2          SBUF=DataScope_OutPut_Buffer[i];
+ 188   2          while(!TI); 
+ 189   2            TI=0;
+ 190   2        }
+ 191   1        temp_R=0;
+ 192   1        temp_L=0; //计数数清零
+ 193   1        delay(5); //延迟一会
+ 194   1      }
+ 195          
+ 196          void TX()
+ 197          {
+ 198   1        tece_buf[0]=NOW_speed_L();
+ 199   1        tece_buf[1]=NOW_speed_R();
+ 200   1        SEND_BUF(tece_buf);       //发送数据
+ 201   1      }
+ 202          
+ 203          void main()
+ 204          {
+ 205   1        Init();
+ 206   1        while(1)
+ 207   1        {
+ 208   2          if(NRF_IRQ==0)                          //如果无线模块接收到数据
+ 209   2          {
+ 210   3            if(NRF24L01_RxPacket(rece_buf)==0)    //判断是否读取数据
+ 211   3            {
+ 212   4              RX();             //接收数据并提示
+ 213   4              START();          //启动小车
+ 214   4      //        if(flag==1)
+ 215   4      //        {
+ 216   4      //          flag=0;
+ 217   4      //          TX();       //发送
+ 218   4      //          send(NOW_speed_L(),NOW_speed_R());      //显示波形
+ 219   4      //        }
+ 220   4            }
+ 221   3          }
+ 222   2          else
+ 223   2          {
+ 224   3            STOP();           //停止
+ 225   3          }
+ 226   2        }
+ 227   1      }
+ 228          
+ 229          void timer0() interrupt 1 //定时器0中断（10us）
+ 230          {
+ 231   1        count_R++;
+ 232   1        count_L++;
+ 233   1        
+ 234   1        if(count_R<=PWM_R)
+ 235   1          ENA=1;
+ 236   1        else
+ 237   1          ENA=0;
+ 238   1        if(count_R==CYCLE)
+ 239   1        {
+ 240   2          ENA=~ENA;
+ 241   2          count_R=0;
+C51 COMPILER V9.56.0.0   ____                                                              06/20/2018 20:09:35 PAGE 5   
+
+ 242   2        }
+ 243   1        
+ 244   1        if(count_L<=PWM_L)
+ 245   1          ENB=1;
+ 246   1        else
+ 247   1          ENB=0;
+ 248   1        if(count_L==CYCLE)
+ 249   1        {
+ 250   2          ENB=~ENB;
+ 251   2          count_L=0;
+ 252   2        }                     //PWM调速
+ 253   1        
+ 254   1        time1++;
+ 255   1        if(time1==100)
+ 256   1        {
+ 257   2          time1=0;
+ 258   2          time2++;
+ 259   2          if(time2==100)
+ 260   2          {
+ 261   3            flag=1;
+ 262   3            time2=0;
+ 263   3          }
+ 264   2        }     //100ms发送一次数据
+ 265   1        
+ 266   1        TH0=(65536-10)/256;
+ 267   1        TL0=(65536-10)%256;   //装初值
+ 268   1      }
+ 269          
+ 270          void exter0() interrupt 0 //小车左轮测速外部中断0
+ 271          {
+ 272   1        temp_R++;
+ 273   1      }
+ 274          
+ 275          void exter1() interrupt 2 //小车右轮测速外部中断1
+ 276          {
+ 277   1        temp_L++;
+ 278   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   1098    ----
+   CONSTANT SIZE    =     10    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     28      49
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

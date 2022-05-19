@@ -1,0 +1,17 @@
+<html>
+<body>
+<pre>
+<h1>礦ision Build Log</h1>
+<h2>Project:</h2>
+I:\单片机\2016理工杯\小车__遥控\遥控小车.uvproj
+Project File Date:  05/30/2015
+
+<h2>Output:</h2>
+Build target 'Target 1'
+compiling main.c...
+linking...
+*** WARNING L16: UNCALLED SEGMENT, IGNORED FOR OVERLAY PROCESS
+    SEGMENT: ?PR?_NRF24L01_RXPACKET?MAIN
+Program Size: data=70.0 xdata=0 code=1297
+creating hex file from "遥控小车"...
+"遥控小车" - 0 Error(s), 1 Warning(s).

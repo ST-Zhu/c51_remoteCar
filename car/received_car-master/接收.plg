@@ -1,0 +1,17 @@
+<html>
+<body>
+<pre>
+<h1>礦ision Build Log</h1>
+<h2>Project:</h2>
+I:\单片机\2016理工杯\小车__接收\接收.uvproj
+Project File Date:  05/30/2015
+
+<h2>Output:</h2>
+Build target 'Target 1'
+compiling 接收.c...
+linking...
+*** WARNING L16: UNCALLED SEGMENT, IGNORED FOR OVERLAY PROCESS
+    SEGMENT: ?PR?_SEND_BUF?接收
+Program Size: data=69.0 xdata=0 code=1288
+creating hex file from "接收"...
+"接收" - 0 Error(s), 1 Warning(s).
